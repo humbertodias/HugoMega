@@ -30,6 +30,5 @@ After building, you can execute HugoMega with:
 
 Feel free to open issues or submit pull requests to improve HugoMega!
 
-## License
-
-TODO
+## Credits
+- Forest created by [gzalo](https://github.com/gzalo/hugo-re)
