@@ -277,14 +277,15 @@ void render_obstacles() {
             draw_catapult(obstacle_pos, game_ctx.catapult_armed[i]);
             break;
         case OBS_TRAP: {
-            /* Rest closed; snap only when Hugo is about to hit (not jumping). */
+            /* Snap shut only while approaching and Hugo is on the ground.
+             * Require eta > 0 so a jumped-over trap behind Hugo stays open. */
             int nframes = (int)textures.trap->getNum();
             if (nframes < 1) nframes = 1;
             int idx = 0;
             double eta = (double)i - game_ctx.parallax_pos;
             const double anim_start = 1.35;
             const double anim_duration = 0.35;
-            if (!game_ctx.arrow_up_focus && eta < anim_start) {
+            if (!game_ctx.arrow_up_focus && eta > 0.0 && eta < anim_start) {
                 double t = (anim_start - eta) / anim_duration;
                 if (t < 0.0) t = 0.0;
                 if (t > 1.0) t = 1.0;
@@ -293,7 +294,7 @@ void render_obstacles() {
             }
             int dy[6] = { 176, 173, 169, 165, 176, 176 };
             int y = dy[idx % 6] - 24;
-            if (textures.trap) textures.trap->drawAt(idx, (int)(obstacle_pos - 8), y, 1, forest_screen, 1, 0);
+            textures.trap->drawAt(idx, (int)(obstacle_pos - 8), y, 1, forest_screen, 1, 0);
             break;
         }
         case OBS_ROCK: {
