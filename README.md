@@ -32,3 +32,4 @@ Feel free to open issues or submit pull requests to improve HugoMega!
 
 ## Credits
 - Forest created by [gzalo](https://github.com/gzalo/hugo-re)
+- HugoMega created by [supinrus](https://github.com/supinrus/HugoMega)
