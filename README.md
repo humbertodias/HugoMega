@@ -1,6 +1,7 @@
 # HugoMega
 
-TODO
+<img width="393" height="500" alt="image" src="https://github.com/user-attachments/assets/02d56570-8e47-437d-9356-acdfb288a254" />
+
 
 ## Build Instructions
 
