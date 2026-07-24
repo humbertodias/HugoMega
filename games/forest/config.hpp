@@ -14,4 +14,7 @@
 #define CATAPULT_DRAW_BASE_Y 112
 #define CATAPULT_REST_DY 45
 
+/* Playfield trap jaw-close before hurt cutscene. */
+#define TRAP_SNAP_DURATION 0.35
+
 #endif /* FOREST_CONFIG_HPP */

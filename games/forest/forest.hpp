@@ -10,12 +10,6 @@
 #include <cstdlib>
 #include <ctime>
 
-
-#include <cstdio>
-#include <cmath>
-#include <cstdlib>
-#include <ctime>
-
 #ifndef M_PI
 #define M_PI 3.14159265358979323846
 #endif
@@ -35,7 +29,6 @@ typedef enum {
     STATE_FOREST_TRAP_ANIMATION,
     STATE_FOREST_TRAP_TALKING,
     STATE_FOREST_PLAYING,
-    STATE_FOREST_SCYLLA_BUTTON,
     STATE_FOREST_TALKING_AFTER_HURT,
     STATE_FOREST_TALKING_GAME_OVER,
     STATE_FOREST_WAIT_INTRO,
@@ -56,7 +49,6 @@ typedef struct {
     int lives;
     double parallax_pos;
     ObstacleType obstacles[FOREST_MAX_TIME];
-    /* Armed catapults launch on contact; cleared when jumped over. */
     bool catapult_armed[FOREST_MAX_TIME];
     int sacks[FOREST_MAX_TIME];
     int leaves[FOREST_MAX_TIME];
@@ -66,6 +58,8 @@ typedef struct {
     double hugo_crawling_time;
     double last_time;
     int old_second;
+    int trap_snap_index;   /* -1 = idle */
+    double trap_snap_start;
 } ForestContext;
 
 static ForestContext game_ctx = {0};
@@ -137,6 +131,45 @@ static void draw_catapult(double obstacle_pos, bool spring_ok)
     textures.catapult->drawAt(idx, cat_x, y, 1, forest_screen, 1, 0);
 }
 
+static void draw_trap(int slot, double obstacle_pos)
+{
+    int nframes = textures.trap ? (int)textures.trap->getNum() : 1;
+    int idx = 0;
+    int dy[6] = { 176, 173, 169, 165, 176, 176 };
+
+    if (nframes < 1)
+        nframes = 1;
+    if (slot == game_ctx.trap_snap_index) {
+        double t = (get_game_time() - game_ctx.trap_snap_start) / TRAP_SNAP_DURATION;
+        if (t < 0.0) t = 0.0;
+        if (t > 1.0) t = 1.0;
+        idx = (int)(t * (nframes - 1) + 1e-6);
+        if (idx >= nframes)
+            idx = nframes - 1;
+    }
+    if (textures.trap)
+        textures.trap->drawAt(idx, (int)(obstacle_pos - 8), dy[idx % 6] - 24, 1, forest_screen, 1, 0);
+}
+
+static ForestState finish_trap_snap_if_done(double now)
+{
+    if (game_ctx.trap_snap_index < 0)
+        return STATE_FOREST_NONE;
+    if (now - game_ctx.trap_snap_start < TRAP_SNAP_DURATION)
+        return STATE_FOREST_NONE;
+    game_ctx.obstacles[game_ctx.trap_snap_index] = OBS_NONE;
+    game_ctx.trap_snap_index = -1;
+    game_ctx.trap_snap_start = -1.0;
+    return STATE_FOREST_TRAP_ANIMATION;
+}
+
+static void begin_trap_snap(int slot)
+{
+    if (FOREST_SOUND_READY(audio.sfx_hugo_hittrap))
+        forest_play(&audio.sfx_hugo_hittrap);
+    game_ctx.trap_snap_index = slot;
+    game_ctx.trap_snap_start = get_game_time();
+}
 
 // -----------------------------------------------------------------------------
 // Obstacle / sack generation
@@ -205,7 +238,6 @@ void generate_leaves() {
 }
 
 void init_game_context() {
-    // Optional: seed RNG once (if not done elsewhere)
     static bool seeded = false;
     if (!seeded) {
         srand((unsigned int)time(NULL));
@@ -221,6 +253,8 @@ void init_game_context() {
     game_ctx.hugo_crawling_time = -1;
     game_ctx.last_time = get_game_time();
     game_ctx.old_second = -1;
+    game_ctx.trap_snap_index = -1;
+    game_ctx.trap_snap_start = -1.0;
 
     generate_obstacles();
     generate_sacks();
@@ -276,27 +310,9 @@ void render_obstacles() {
         case OBS_CATAPULT:
             draw_catapult(obstacle_pos, game_ctx.catapult_armed[i]);
             break;
-        case OBS_TRAP: {
-            /* Snap shut only while approaching and Hugo is on the ground.
-             * Require eta > 0 so a jumped-over trap behind Hugo stays open. */
-            int nframes = (int)textures.trap->getNum();
-            if (nframes < 1) nframes = 1;
-            int idx = 0;
-            double eta = (double)i - game_ctx.parallax_pos;
-            const double anim_start = 1.35;
-            const double anim_duration = 0.35;
-            if (!game_ctx.arrow_up_focus && eta > 0.0 && eta < anim_start) {
-                double t = (anim_start - eta) / anim_duration;
-                if (t < 0.0) t = 0.0;
-                if (t > 1.0) t = 1.0;
-                idx = (int)(t * (nframes - 1) + 1e-6);
-                if (idx >= nframes) idx = nframes - 1;
-            }
-            int dy[6] = { 176, 173, 169, 165, 176, 176 };
-            int y = dy[idx % 6] - 24;
-            textures.trap->drawAt(idx, (int)(obstacle_pos - 8), y, 1, forest_screen, 1, 0);
+        case OBS_TRAP:
+            draw_trap(i, obstacle_pos);
             break;
-        }
         case OBS_ROCK: {
             /* Spin while translating left across the screen. */
             int nframes = (int)textures.rock->getNum();
@@ -340,8 +356,6 @@ void render_obstacles() {
 }
 
 void render_sacks() {
-    (void)get_frame_index(&forest_state_metadata); // frame not used but kept for parity
-
     for (int i = 0; i < FOREST_MAX_TIME; i++) {
         if (game_ctx.sacks[i] == 0) continue;
 
@@ -694,12 +708,6 @@ void render_forest_trap_talking() {
     forest_draw_sync_cgf(&textures.hugo_telllives, textures.sync_trap, get_frame_index(&forest_state_metadata), 0, 0);
 }
 
-void render_forest_scylla_button() {
-    // Placeholder: GameTextures doesn't define scylla hand textures yet;
-    // skip to avoid compilation error.
-    // Implement when textures are added to GameTextures.
-}
-
 void render_forest_talking_after_hurt() {
     int frame = get_frame_index(&forest_state_metadata);
 
@@ -799,10 +807,13 @@ ForestState process_forest_playing(InputState state) {
         return STATE_FOREST_WIN_TALKING;
     }
 
-    // Update parallax position
     double current_time = get_game_time();
     game_ctx.parallax_pos += current_time - game_ctx.last_time;
     game_ctx.last_time = current_time;
+
+    /* Trap snap: keep scrolling; after duration enter hurt cutscene. */
+    if (game_ctx.trap_snap_index >= 0)
+        return finish_trap_snap_if_done(current_time);
 
     // Integer / fractional position
     double int_part;
@@ -838,9 +849,9 @@ ForestState process_forest_playing(InputState state) {
         ObstacleType obs = game_ctx.obstacles[integer];
         if (obs != OBS_NONE) {
             if (obs == OBS_TRAP && !game_ctx.arrow_up_focus) {
-                if (FOREST_SOUND_READY(audio.sfx_hugo_hittrap)) forest_play(&audio.sfx_hugo_hittrap);
-                game_ctx.obstacles[integer] = OBS_NONE;
-                return STATE_FOREST_TRAP_ANIMATION;
+                begin_trap_snap(integer);
+                game_ctx.old_second = current_second;
+                return STATE_FOREST_NONE;
             } else if (obs == OBS_TREE) {
                 if (game_ctx.arrow_down_focus) {
                     if (FOREST_SOUND_READY(audio.sfx_tree_swush)) forest_play(&audio.sfx_tree_swush);
@@ -1041,18 +1052,6 @@ ForestState process_forest_trap_talking(InputState state) {
     return STATE_FOREST_NONE;
 }
 
-ForestState process_forest_scylla_button(InputState state) {
-    (void)state;
-    if (one_shot(&forest_state_metadata, 0.5, 0)) {
-        if (FOREST_SOUND_READY(audio.sfx_lightning_warning)) forest_play(&audio.sfx_lightning_warning);
-    }
-
-    if (get_state_time(&forest_state_metadata) > 2.0) {
-        return STATE_FOREST_PLAYING;
-    }
-    return STATE_FOREST_NONE;
-}
-
 ForestState process_forest_talking_after_hurt(InputState state) {
     (void)state;
     if (one_shot(&forest_state_metadata, 0.5, 0)) {
@@ -1115,25 +1114,6 @@ ForestState process_forest_win_talking(InputState state) {
     return STATE_FOREST_NONE;
 }
 
-// Legacy win / game over (kept for compatibility)
-
-ForestState process_win(InputState state) {
-    (void)state;
-    if (get_state_time(&forest_state_metadata) > 3.0) {
-        return STATE_FOREST_END;
-    }
-    return STATE_FOREST_NONE;
-}
-
-ForestState process_game_over(InputState state) {
-    (void)state;
-    if (get_state_time(&forest_state_metadata) > 5.0) {
-        return STATE_FOREST_END;
-    }
-    return STATE_FOREST_NONE;
-}
-
-
 GameState process_forest(InputState state){
 
     if (state.debug_toggle) {
@@ -1185,9 +1165,6 @@ GameState process_forest(InputState state){
         break;
     case STATE_FOREST_TRAP_TALKING:
         next_state = process_forest_trap_talking(state);
-        break;
-    case STATE_FOREST_SCYLLA_BUTTON:
-        next_state = process_forest_scylla_button(state);
         break;
     case STATE_FOREST_TALKING_AFTER_HURT:
         next_state = process_forest_talking_after_hurt(state);
@@ -1300,9 +1277,6 @@ void render_forest(){
         break;
     case STATE_FOREST_TRAP_TALKING:
         render_forest_trap_talking();
-        break;
-    case STATE_FOREST_SCYLLA_BUTTON:
-        render_forest_scylla_button();
         break;
     case STATE_FOREST_TALKING_AFTER_HURT:
         render_forest_talking_after_hurt();

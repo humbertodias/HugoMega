@@ -109,7 +109,6 @@ typedef struct {
   ForestSound speak_levelcompleted;
 
   ForestSound sfx_bg_atmosphere;
-  ForestSound sfx_lightning_warning;
   ForestSound sfx_hugo_knock;
   ForestSound sfx_hugo_hittrap;
   ForestSound sfx_hugo_launch;

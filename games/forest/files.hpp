@@ -168,7 +168,6 @@ int ForestOpenFiles(void)
   LOAD_SOUND(speak_levelcompleted, "ForestData/speaks/005-13.wav");
 
   LOAD_SOUND(sfx_bg_atmosphere, "ForestData/sfx/atmos-lp.wav");
-  LOAD_SOUND(sfx_lightning_warning, "ForestData/sfx/warning.wav");
   LOAD_SOUND(sfx_hugo_knock, "ForestData/sfx/knock.wav");
   LOAD_SOUND(sfx_hugo_hittrap, "ForestData/sfx/crunch.wav");
   LOAD_SOUND(sfx_hugo_launch, "ForestData/sfx/skriid.wav");
@@ -315,7 +314,6 @@ void ForestUnloadFiles(void)
   FREE_SOUND(speak_gameover);
   FREE_SOUND(speak_levelcompleted);
   FREE_SOUND(sfx_bg_atmosphere);
-  FREE_SOUND(sfx_lightning_warning);
   FREE_SOUND(sfx_hugo_knock);
   FREE_SOUND(sfx_hugo_hittrap);
   FREE_SOUND(sfx_hugo_launch);
