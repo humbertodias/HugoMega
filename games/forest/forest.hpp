@@ -245,9 +245,10 @@ void render_obstacles() {
                 idx = (int)(t * (nframes - 1) + 1e-6);
                 if (idx >= nframes) idx = nframes - 1;
             }
-            int dy[8] = { 45, 43, 39, 34, 29, 22, 14, 1 };
-            int y = 112 + dy[idx % 8];
-            if (textures.catapult) textures.catapult->drawAt(idx, cat_x, y, 1, forest_screen, 1, 0);
+            /* Frame 0 sits on the ground; later frames lift as the spring expands. */
+            int dy[8] = { CATAPULT_REST_DY, 43, 39, 34, 29, 22, 14, 1 };
+            int y = CATAPULT_DRAW_BASE_Y + dy[idx % 8];
+            textures.catapult->drawAt(idx, cat_x, y, 1, forest_screen, 1, 0);
             break;
         }
         case OBS_TRAP: {
@@ -451,12 +452,13 @@ static void render_collision_debug(void)
 
             switch (obs) {
             case OBS_CATAPULT:
+                /* Match rest pose draw (CATAPULT_DRAW_BASE_Y + CATAPULT_REST_DY). */
                 w = forest_cgf_width(textures.catapult);
                 h = forest_cgf_height(textures.catapult);
                 if (w <= 0) w = 40;
                 if (h <= 0) h = 40;
                 x = (int)(obstacle_pos - 8);
-                y = 112;
+                y = CATAPULT_DRAW_BASE_Y + CATAPULT_REST_DY;
                 would_hit = !hugo_safe_jump;
                 break;
             case OBS_TRAP:
