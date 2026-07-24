@@ -56,6 +56,8 @@ typedef struct {
     int lives;
     double parallax_pos;
     ObstacleType obstacles[FOREST_MAX_TIME];
+    /* Armed catapults launch on contact; cleared when jumped over. */
+    bool catapult_armed[FOREST_MAX_TIME];
     int sacks[FOREST_MAX_TIME];
     int leaves[FOREST_MAX_TIME];
     bool arrow_up_focus;
@@ -64,11 +66,6 @@ typedef struct {
     double hugo_crawling_time;
     double last_time;
     int old_second;
-
-    // Cave game state (shared context)
-    int cave_selected_rope;
-    int cave_win_type;
-    int rolling_score;
 } ForestContext;
 
 static ForestContext game_ctx = {0};
@@ -76,12 +73,68 @@ static ForestState current_forest_state = STATE_FOREST_WAIT_INTRO;
 static StateMetadata forest_state_metadata;
 static bool debug_show_collisions = false;
 
-#define FOREST_BG_SPEED_MULTIPLIER 1.0
-
 static double new_mod(double a, double b) {
     double res = fmod(a, b);
     if (res == 0.0) return res;
     return (a < 0.0) ? res - b : res;
+}
+
+static int sprite_w(cgfFile *cgf, int fallback)
+{
+    int w = forest_cgf_width(cgf);
+    return w > 0 ? w : fallback;
+}
+
+static int sprite_h(cgfFile *cgf, int fallback)
+{
+    int h = forest_cgf_height(cgf);
+    return h > 0 ? h : fallback;
+}
+
+/* Catapult X placement and mid-hit tolerance (shared by draw + collision). */
+static void catapult_x_metrics(double obstacle_pos, int *out_x, int *out_cx, int *out_mid_tol)
+{
+    int cat_w = sprite_w(textures.catapult, 51);
+    int cat_x = (int)(obstacle_pos - 8);
+    int mid_tol = cat_w / 5;
+    if (mid_tol < 6)
+        mid_tol = 6;
+    if (out_x)
+        *out_x = cat_x;
+    if (out_cx)
+        *out_cx = cat_x + cat_w / 2;
+    if (out_mid_tol)
+        *out_mid_tol = mid_tol;
+}
+
+static void draw_catapult(double obstacle_pos, bool spring_ok)
+{
+    int nframes = (int)textures.catapult->getNum();
+    if (nframes < 1)
+        nframes = 1;
+    int idx = 0;
+    int cat_x, cat_cx, mid_tol;
+    catapult_x_metrics(obstacle_pos, &cat_x, &cat_cx, &mid_tol);
+    (void)mid_tol;
+
+    if (spring_ok && !game_ctx.arrow_up_focus) {
+        int hugo_cx = HUGO_X_POS + sprite_w(textures.hugo_side, 58) / 2;
+        int start_dist = sprite_w(textures.catapult, 51) / 2;
+        int delta = hugo_cx - cat_cx;
+        if (delta >= -start_dist && delta <= start_dist) {
+            double t = (double)(delta + start_dist) / (double)start_dist;
+            if (t < 0.0) t = 0.0;
+            if (t > 1.0) t = 1.0;
+            idx = (int)(t * (nframes - 1) + 1e-6);
+            if (idx >= nframes)
+                idx = nframes - 1;
+        }
+    }
+
+    /* dy[] mirrors CGF posy so drawAt keeps the base planted. */
+    int dy[8] = { CATAPULT_REST_DY, 43, 39, 34, 29, 22, 14, 1 };
+    int y = CATAPULT_DRAW_BASE_Y + dy[idx % 8];
+    textures.catapult->drawAt(idx, cat_x, y, 1, forest_screen, 1, 0);
 }
 
 
@@ -91,33 +144,34 @@ static double new_mod(double a, double b) {
 
 void generate_obstacles() {
     // Match Python: empty 65%, others 8.75% each (35%/4 = 8.75%)
-    // 0 = none, 1 = catapult, 2 = trap, 3 = rock, 4 = tree
-    // Using 10000 scale for more precision: 6500, 875, 875, 875, 875
     for (int i = 0; i < FOREST_MAX_TIME; i++) {
         int r = rand() % 10000;
+        game_ctx.catapult_armed[i] = false;
         if (r < 6500) {
             game_ctx.obstacles[i] = OBS_NONE;
-        } else if (r < 6500 + 875) {        // catapult: 8.75%
+        } else if (r < 6500 + 875) {
             game_ctx.obstacles[i] = OBS_CATAPULT;
-        } else if (r < 6500 + 1750) {       // trap: 8.75%
+            game_ctx.catapult_armed[i] = true;
+        } else if (r < 6500 + 1750) {
             game_ctx.obstacles[i] = OBS_TRAP;
-        } else if (r < 6500 + 2625) {       // rock: 8.75%
+        } else if (r < 6500 + 2625) {
             game_ctx.obstacles[i] = OBS_ROCK;
-        } else {                            // tree: 8.75%
+        } else {
             game_ctx.obstacles[i] = OBS_TREE;
         }
     }
 
-    // Clear first few positions
     if (FOREST_MAX_TIME > 0) game_ctx.obstacles[0] = OBS_NONE;
     if (FOREST_MAX_TIME > 1) game_ctx.obstacles[1] = OBS_NONE;
     if (FOREST_MAX_TIME > 2) game_ctx.obstacles[2] = OBS_NONE;
     if (FOREST_MAX_TIME > 3) game_ctx.obstacles[3] = OBS_NONE;
+    for (int i = 0; i < 4 && i < FOREST_MAX_TIME; i++)
+        game_ctx.catapult_armed[i] = false;
 
-    // Ensure no consecutive obstacles
     for (int i = 0; i < FOREST_MAX_TIME - 1; i++) {
         if (game_ctx.obstacles[i] != OBS_NONE) {
             game_ctx.obstacles[i + 1] = OBS_NONE;
+            game_ctx.catapult_armed[i + 1] = false;
         }
     }
 }
@@ -167,11 +221,6 @@ void init_game_context() {
     game_ctx.hugo_crawling_time = -1;
     game_ctx.last_time = get_game_time();
     game_ctx.old_second = -1;
-
-    // Cave game initialization
-    game_ctx.cave_selected_rope = -1;
-    game_ctx.cave_win_type = -1;
-    game_ctx.rolling_score = 0;
 
     generate_obstacles();
     generate_sacks();
@@ -224,33 +273,9 @@ void render_obstacles() {
         }
 
         switch (obs) {
-        case OBS_CATAPULT: {
-            /* Rest compressed; spring only when Hugo is on the platform middle. */
-            int nframes = (int)textures.catapult->getNum();
-            if (nframes < 1) nframes = 1;
-            int idx = 0;
-            int cat_w = forest_cgf_width(textures.catapult);
-            int hugo_w = forest_cgf_width(textures.hugo_side);
-            if (cat_w <= 0) cat_w = 51;
-            if (hugo_w <= 0) hugo_w = 58;
-            int cat_x = (int)(obstacle_pos - 8);
-            int hugo_cx = HUGO_X_POS + hugo_w / 2;
-            int cat_cx = cat_x + cat_w / 2;
-            int delta = hugo_cx - cat_cx; /* <0 approaching, 0 = on middle */
-            int start_dist = cat_w / 2;
-            if (!game_ctx.arrow_up_focus && delta >= -start_dist && delta <= start_dist) {
-                double t = (double)(delta + start_dist) / (double)start_dist;
-                if (t < 0.0) t = 0.0;
-                if (t > 1.0) t = 1.0;
-                idx = (int)(t * (nframes - 1) + 1e-6);
-                if (idx >= nframes) idx = nframes - 1;
-            }
-            /* Frame 0 sits on the ground; later frames lift as the spring expands. */
-            int dy[8] = { CATAPULT_REST_DY, 43, 39, 34, 29, 22, 14, 1 };
-            int y = CATAPULT_DRAW_BASE_Y + dy[idx % 8];
-            textures.catapult->drawAt(idx, cat_x, y, 1, forest_screen, 1, 0);
+        case OBS_CATAPULT:
+            draw_catapult(obstacle_pos, game_ctx.catapult_armed[i]);
             break;
-        }
         case OBS_TRAP: {
             /* Rest closed; snap only when Hugo is about to hit (not jumping). */
             int nframes = (int)textures.trap->getNum();
@@ -451,16 +476,17 @@ static void render_collision_debug(void)
             would_hit = false;
 
             switch (obs) {
-            case OBS_CATAPULT:
-                /* Match rest pose draw (CATAPULT_DRAW_BASE_Y + CATAPULT_REST_DY). */
-                w = forest_cgf_width(textures.catapult);
-                h = forest_cgf_height(textures.catapult);
-                if (w <= 0) w = 40;
-                if (h <= 0) h = 40;
-                x = (int)(obstacle_pos - 8);
+            case OBS_CATAPULT: {
+                int cat_x, mid_tol;
+                catapult_x_metrics(obstacle_pos, &cat_x, NULL, &mid_tol);
+                (void)mid_tol;
+                w = sprite_w(textures.catapult, 40);
+                h = sprite_h(textures.catapult, 40);
+                x = cat_x;
                 y = CATAPULT_DRAW_BASE_Y + CATAPULT_REST_DY;
-                would_hit = !hugo_safe_jump;
+                would_hit = game_ctx.catapult_armed[i] && !hugo_safe_jump;
                 break;
+            }
             case OBS_TRAP:
                 w = forest_cgf_width(textures.trap);
                 h = forest_cgf_height(textures.trap);
@@ -531,9 +557,9 @@ static void render_collision_debug(void)
 
 // Render background (match Python parallax as close as possible)
 void render_forest_background() {
-    double hills_speed = 6.0 * FOREST_BG_SPEED_MULTIPLIER;
-    double trees_speed = 12.0 * FOREST_BG_SPEED_MULTIPLIER;
-    double grass_speed = 30.0 * FOREST_BG_SPEED_MULTIPLIER;
+    double hills_speed = 6.0;
+    double trees_speed = 12.0;
+    double grass_speed = 30.0;
 
     // Query texture widths each frame so scrolling repeats with the real asset size
     int hills_width  = forest_cgf_width(textures.bg_hillsday);
@@ -706,22 +732,44 @@ void render_forest_wait_intro() {
                          get_frame_index(&forest_state_metadata), 128, -16);
 }
 
-// ---------------- COLLISION ----------------
-
-bool check_collision(int obstacle_idx) {
-    ObstacleType obs = game_ctx.obstacles[obstacle_idx];
-    if (obs == OBS_NONE) return false;
-
-    // Catapult, trap, rock need jump; tree needs duck
-    if (obs == OBS_CATAPULT || obs == OBS_TRAP || obs == OBS_ROCK) {
-        return !game_ctx.arrow_up_focus;
-    } else if (obs == OBS_TREE) {
-        return !game_ctx.arrow_down_focus;
-    }
-    return false;
-}
-
 // ---------------- STATE PROCESSING: PLAYING / HURT / TALKING / WIN / GAME OVER ----------------
+
+static ForestState process_midair_hazards(void)
+{
+    int hugo_cx = HUGO_X_POS + sprite_w(textures.hugo_side, 58) / 2;
+    int rock_w = sprite_w(textures.rock, 45);
+
+    for (int i = 0; i < FOREST_MAX_TIME; i++) {
+        ObstacleType obs = game_ctx.obstacles[i];
+        if (obs == OBS_CATAPULT && game_ctx.catapult_armed[i]) {
+            double obstacle_pos = (i - game_ctx.parallax_pos) * FOREST_GROUND_SPEED;
+            int cat_cx, mid_tol;
+            catapult_x_metrics(obstacle_pos, NULL, &cat_cx, &mid_tol);
+            if (abs(hugo_cx - cat_cx) > mid_tol)
+                continue;
+            if (game_ctx.arrow_up_focus) {
+                game_ctx.catapult_armed[i] = false;
+                continue;
+            }
+            forest_play(&audio.sfx_hugo_launch);
+            forest_play(&audio.sfx_catapult_eject);
+            game_ctx.obstacles[i] = OBS_NONE;
+            game_ctx.catapult_armed[i] = false;
+            return STATE_FOREST_FLYING_START;
+        }
+        if (!game_ctx.arrow_up_focus && obs == OBS_ROCK) {
+            double rock_x = ((double)i - game_ctx.parallax_pos) * ROCK_ROLL_SPEED;
+            int rock_cx = (int)rock_x + rock_w / 2;
+            int hit_tol = (sprite_w(textures.hugo_side, 58) + rock_w) / 4;
+            if (abs(hugo_cx - rock_cx) <= hit_tol) {
+                forest_play(&audio.sfx_hugo_hitlog);
+                game_ctx.obstacles[i] = OBS_NONE;
+                return STATE_FOREST_ROCK_ANIMATION;
+            }
+        }
+    }
+    return STATE_FOREST_NONE;
+}
 
 ForestState process_forest_playing(InputState state) {
     // Jump: single timed action on key press
@@ -776,40 +824,11 @@ ForestState process_forest_playing(InputState state) {
         }
     }
 
-    /* Catapult launches when Hugo is standing on its middle (not jumping). */
-    if (!game_ctx.arrow_up_focus) {
-        int hugo_w = forest_cgf_width(textures.hugo_side);
-        int cat_w = forest_cgf_width(textures.catapult);
-        int rock_w = forest_cgf_width(textures.rock);
-        if (hugo_w <= 0) hugo_w = 58;
-        if (cat_w <= 0) cat_w = 51;
-        if (rock_w <= 0) rock_w = 45;
-        int hugo_cx = HUGO_X_POS + hugo_w / 2;
-        int mid_tol = cat_w / 5;
-        if (mid_tol < 6) mid_tol = 6;
-
-        for (int i = 0; i < FOREST_MAX_TIME; i++) {
-            ObstacleType obs = game_ctx.obstacles[i];
-            if (obs == OBS_CATAPULT) {
-                double obstacle_pos = (i - game_ctx.parallax_pos) * FOREST_GROUND_SPEED;
-                int cat_cx = (int)(obstacle_pos - 8) + cat_w / 2;
-                if (abs(hugo_cx - cat_cx) <= mid_tol) {
-                    if (FOREST_SOUND_READY(audio.sfx_hugo_launch)) forest_play(&audio.sfx_hugo_launch);
-                    if (FOREST_SOUND_READY(audio.sfx_catapult_eject)) forest_play(&audio.sfx_catapult_eject);
-                    game_ctx.obstacles[i] = OBS_NONE;
-                    return STATE_FOREST_FLYING_START;
-                }
-            } else if (obs == OBS_ROCK) {
-                double rock_x = ((double)i - game_ctx.parallax_pos) * ROCK_ROLL_SPEED;
-                int rock_cx = (int)rock_x + rock_w / 2;
-                int hit_tol = (hugo_w + rock_w) / 4;
-                if (abs(hugo_cx - rock_cx) <= hit_tol) {
-                    if (FOREST_SOUND_READY(audio.sfx_hugo_hitlog)) forest_play(&audio.sfx_hugo_hitlog);
-                    game_ctx.obstacles[i] = OBS_NONE;
-                    return STATE_FOREST_ROCK_ANIMATION;
-                }
-            }
-        }
+    /* Catapult mid-hit + rolling rocks. */
+    {
+        ForestState hazard = process_midair_hazards();
+        if (hazard != STATE_FOREST_NONE)
+            return hazard;
     }
 
     // New second: handle collisions and sacks
