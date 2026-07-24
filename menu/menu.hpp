@@ -1,7 +1,6 @@
 #include "options.hpp"
 #include "hiscore.hpp"
-#include "../games/laby/start.hpp"
-#include "../games/forest/start.hpp"
+#include "../games/registry.hpp"
 
 void hideFilm(SDL_Surface *screen, SDL_Surface *bkgr, SDL_Window *window,
 				Uint32 tintLeft, Uint32 tintRight, Uint32 tintUp, Uint32 tintDown,
@@ -470,19 +469,8 @@ int playMenu(SDL_Window* window)
 						music.stopAudio();
 						music.clearAudio();
 						Uint32 score = 0;
-						switch (numGame)
-						{
-						    case 0:
-    							if (labyStart(score,gameMode,playerMode,window,screen))
-    							{
-    							}
-							break;
-							case 3:
-								if (forestStart(score, gameMode, playerMode, window, screen))
-								{
-								}
-								break;
-						}
+						launchGame(numGame, gameNames[numGame], score, gameMode, playerMode,
+						           window, screen);
 						music.loadAudio();
 						timeMusic = SDL_GetTicks();
 						music.playAudio();

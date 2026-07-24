@@ -2,6 +2,7 @@ CXX_FLAGS := -std=c++17 -Wall $(shell pkg-config --cflags sdl2 SDL2_mixer)
 LD_FLAGS := $(shell pkg-config --libs sdl2 SDL2_mixer) -lm
 CXX := g++
 
+.PHONY: hugomain
 all: hugomain
 
 hugomain: hugomain.cpp
