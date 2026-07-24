@@ -19,6 +19,8 @@ After building, you can execute HugoMega with:
 ```shell
 ./build/hugomain
 ```
+Don't forget to add the hugo gold [data](https://www.myabandonware.com/game/hugo-gold-fub#download) folder at the same `hugomain` level 
+
 
 ## Requirements
 
@@ -31,5 +33,5 @@ After building, you can execute HugoMega with:
 Feel free to open issues or submit pull requests to improve HugoMega!
 
 ## Credits
-- Forest created by [gzalo](https://github.com/gzalo/hugo-re)
-- HugoMega created by [supinrus](https://github.com/supinrus/HugoMega)
+- [Forest](games/forest) by [gzalo](https://github.com/gzalo/hugo-re)
+- [Labyrinth](games/laby) by [supinrus](https://github.com/supinrus/HugoMega)
