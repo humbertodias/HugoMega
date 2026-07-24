@@ -19,19 +19,35 @@ Uint32 labyStart(Uint32 &score, Uint32 gameMode, Uint32 playerMode, SDL_Window *
 		pathMapArrows = "LabyrinthData/gfx/ArcadeMapArrows.cgf";
 	}
 	cgfFile mapArrows(getFullPath(pathMapArrows));
-	st = st*introPic.getStatus();
-	st = st*hugoSync.getStatus();
-	st = st*introSpeak.getStatus();
-	st = st*introSync.getStatus();
-	st = st*labyBack1.getStatus();
-	st = st*labyMap.getStatus();
-	st = st*mapArrows.getStatus();
+	cgfFile hugoWalksRight(getFullPath("LabyrinthData/gfx/HugoWalksRight2.cgf"));
+	cgfFile hugoWalksLeft(getFullPath("LabyrinthData/gfx/HugoWalksLeft2.cgf"));
+	cgfFile hugoJumpsRight(getFullPath("LabyrinthData/gfx/HugoJumpsRight.cgf"));
+	cgfFile hugoJumpsLeft(getFullPath("LabyrinthData/gfx/HugoJumpsLeft.cgf"));
+	wavFile runSound(getFullPath("LabyrinthData/Sfx/Run2-lp.wav"));
+
+	st = st * introPic.getStatus();
+	st = st * hugoSync.getStatus();
+	st = st * introSpeak.getStatus();
+	st = st * introSync.getStatus();
+	st = st * labyBack1.getStatus();
+	st = st * labyMap.getStatus();
+	st = st * mapArrows.getStatus();
+	st = st * hugoWalksRight.getStatus();
+	st = st * hugoWalksLeft.getStatus();
+	st = st * hugoJumpsRight.getStatus();
+	st = st * hugoJumpsLeft.getStatus();
+	st = st * runSound.getStatus();
 	if (!st)
 	{
 		return 1;
 	}
+
+	/* 1) Intro speak + lip sync */
 	introSync.playOos(introSpeak, hugoSync, -0x42, -0x10, introPic, window, screen);
-	if (!labyStep1(score,gameMode,playerMode,window,screen,labyBack1,labyMap,mapArrows))
+
+	/* 2) Map overview, then 3) side-scroller play (hugo-games step1) */
+	if (!labyStep1(score, gameMode, playerMode, window, screen, labyBack1, labyMap, mapArrows,
+				   hugoWalksRight, hugoWalksLeft, hugoJumpsRight, hugoJumpsLeft, runSound))
 	{
 	}
 	return 0;
