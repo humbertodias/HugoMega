@@ -90,7 +90,7 @@ CaveState process_cave_talking_before_climb(InputState state) {
         forest_play(&audio.cave_trappe_grin);
     }
     
-    if (get_frame_index(&cave_state_metadata) >= textures.cave_talks.sync->getSize()) {
+    if (forest_sync_finished(textures.cave_talks.sync, &cave_state_metadata)) {
         return STATE_CAVE_CLIMBING;
     }
     return STATE_CAVE_NONE;

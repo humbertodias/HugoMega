@@ -892,7 +892,7 @@ ForestState process_forest_branch_talking(InputState state) {
     }
 
     // Use sync data to determine transition
-    if (textures.sync_hitlog->getSize() > 0 && get_frame_index(&forest_state_metadata) >= textures.sync_hitlog->getSize()) {
+    if (forest_sync_finished(textures.sync_hitlog, &forest_state_metadata)) {
         return reduce_lives_and_transition();
     }
 
@@ -926,7 +926,7 @@ ForestState process_forest_flying_talking(InputState state) {
     }
 
     // Use sync data to determine transition
-    if (textures.sync_catapult_talktop->getSize() > 0 && get_frame_index(&forest_state_metadata) >= textures.sync_catapult_talktop->getSize()) {
+    if (forest_sync_finished(textures.sync_catapult_talktop, &forest_state_metadata)) {
         return STATE_FOREST_FLYING_FALLING;
     }
 
@@ -966,7 +966,7 @@ ForestState process_forest_flying_falling_hang_talking(InputState state) {
     }
 
     // Use sync data to determine transition
-    if (textures.sync_catapult_hang->getSize() > 0 && get_frame_index(&forest_state_metadata) >= textures.sync_catapult_hang->getSize()) {
+    if (forest_sync_finished(textures.sync_catapult_hang, &forest_state_metadata)) {
         return reduce_lives_and_transition();
     }
     return STATE_FOREST_NONE;
@@ -995,7 +995,7 @@ ForestState process_forest_rock_talking(InputState state) {
     }
 
     // Use sync data if available
-    if (textures.sync_rock->getSize() > 0 && get_frame_index(&forest_state_metadata) >= textures.sync_rock->getSize()) {
+    if (forest_sync_finished(textures.sync_rock, &forest_state_metadata)) {
         return reduce_lives_and_transition();
     }
     return STATE_FOREST_NONE;
@@ -1016,7 +1016,7 @@ ForestState process_forest_trap_talking(InputState state) {
     }
 
     // Use sync data if available
-    if (textures.sync_trap->getSize() > 0 && get_frame_index(&forest_state_metadata) >= textures.sync_trap->getSize()) {
+    if (forest_sync_finished(textures.sync_trap, &forest_state_metadata)) {
         return reduce_lives_and_transition();
     }
     return STATE_FOREST_NONE;
@@ -1050,8 +1050,8 @@ ForestState process_forest_talking_after_hurt(InputState state) {
     }
 
     // Use sync data to determine when to transition
-    int sync_count = (game_ctx.lives == 1) ? textures.sync_lastlife->getSize() : textures.sync_dieonce->getSize();
-    if (sync_count > 0 && get_frame_index(&forest_state_metadata) >= sync_count) {
+    oosFile *hurt_sync = (game_ctx.lives == 1) ? textures.sync_lastlife : textures.sync_dieonce;
+    if (forest_sync_finished(hurt_sync, &forest_state_metadata)) {
         return STATE_FOREST_PLAYING;
     }
     return STATE_FOREST_NONE;
@@ -1064,7 +1064,7 @@ ForestState process_forest_talking_game_over(InputState state) {
     }
 
     // Use sync data to determine when to transition
-    if (textures.sync_gameover->getSize() > 0 && get_frame_index(&forest_state_metadata) >= textures.sync_gameover->getSize()) {
+    if (forest_sync_finished(textures.sync_gameover, &forest_state_metadata)) {
         return STATE_FOREST_END;
     }
     return STATE_FOREST_NONE;
@@ -1077,7 +1077,7 @@ ForestState process_forest_wait_intro(InputState state) {
     }
 
     // Use sync data to determine when to transition to playing
-    if (textures.sync_start->getSize() > 0 && get_frame_index(&forest_state_metadata) >= textures.sync_start->getSize()) {
+    if (forest_sync_finished(textures.sync_start, &forest_state_metadata)) {
         return STATE_FOREST_PLAYING;
     }
     return STATE_FOREST_NONE;
@@ -1090,7 +1090,7 @@ ForestState process_forest_win_talking(InputState state) {
     }
 
     // Use sync data to determine when to transition
-    if (textures.sync_levelcompleted->getSize() > 0 && get_frame_index(&forest_state_metadata) >= textures.sync_levelcompleted->getSize()) {
+    if (forest_sync_finished(textures.sync_levelcompleted, &forest_state_metadata)) {
         return STATE_FOREST_END;
     }
     return STATE_FOREST_NONE;

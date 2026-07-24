@@ -2,6 +2,7 @@
 #define FOREST_DRAW_HPP
 
 #include "types.hpp"
+#include "state.hpp"
 
 SDL_Surface *forest_screen;
 
@@ -22,6 +23,13 @@ int forest_cgf_height(cgfFile *info)
   if (!info || !info->getStatus() || info->getNum() == 0)
     return 0;
   return (int)info->getHeight(0);
+}
+
+bool forest_sync_finished(oosFile *sync, StateMetadata *metadata)
+{
+  if (!sync || !sync->getStatus() || sync->getSize() == 0)
+    return false;
+  return get_frame_index(metadata) >= (int)sync->getSize();
 }
 
 void forest_draw_rect_fill(int x, int y, int w, int h, Uint8 r, Uint8 g, Uint8 b, Uint8 a)
