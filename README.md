@@ -19,7 +19,7 @@ After building, you can execute HugoMega with:
 ```shell
 ./build/hugomain
 ```
-Don't forget to add the hugo gold [data](https://www.myabandonware.com/game/hugo-gold-fub#download) folder at the same `hugomain` level 
+Don't forget to add the hugo gold [data](https://sites.google.com/view/ajugarconhugopc/juegos/ediciondorada) folder at the same `hugomain` level 
 
 
 ## Requirements
