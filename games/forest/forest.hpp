@@ -549,7 +549,6 @@ static void render_collision_debug(void)
         }
     }
 
-    forest_draw_rect_fill(0, 0, FOREST_SCREEN_WIDTH, 12, 0, 0, 0, 140);
     forest_draw_rect_outline(4, 2, 8, 8, 255, 40, 40, 255);
     forest_draw_rect_outline(16, 2, 8, 8, 40, 220, 80, 255);
     forest_draw_rect_outline(28, 2, 8, 8, 0, 220, 255, 255);
