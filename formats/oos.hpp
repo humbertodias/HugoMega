@@ -54,6 +54,18 @@ public:
 	{
 		return status;
 	}
+	Uint32 getSize() const
+	{
+		return (status && buf) ? sz : 0;
+	}
+	Uint8 getSyncFrame(Uint32 tick) const
+	{
+		if (!buf || tick >= sz)
+		{
+			return 0;
+		}
+		return buf[tick];
+	}
 	void playOos(wavFile &speak, cgfFile &sync, Uint32 syncX, Uint32 syncY, rawFile &back, SDL_Window *window, SDL_Surface *screen)
 	{
 		speak.clearAudio();

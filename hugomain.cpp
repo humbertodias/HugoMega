@@ -2,6 +2,7 @@
 #include <fstream>
 #include "localfolder.hpp"
 #include <SDL2/SDL.h>
+#include <SDL2/SDL_mixer.h>
 
 typedef struct OPTHUGO
 {
@@ -37,7 +38,7 @@ int main(int argc, char *argv[])
 	{
 		return 1;
 	}
-	window = SDL_CreateWindow("Кузя. Мега-издание",SDL_WINDOWPOS_UNDEFINED,
+	window = SDL_CreateWindow("Hugo. Mega-Edition",SDL_WINDOWPOS_UNDEFINED,
 		SDL_WINDOWPOS_UNDEFINED,SCREEN_WIDTH,SCREEN_HEIGHT,SDL_WINDOW_SHOWN);
 	if (window==NULL)
 	{

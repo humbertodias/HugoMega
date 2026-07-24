@@ -248,7 +248,219 @@ public:
 	{
 		data[num].posx = posX;
 	}
-	void draw(Uint32 numpic, Uint32 x, Uint32 y, Uint8 scale, SDL_Surface *screen, Uint32 Tint, Uint8 anti)
+	Uint32 getPosX(Uint32 num) const
+	{
+		return data[num].posx;
+	}
+	Uint32 getPosY(Uint32 num) const
+	{
+		return data[num].posy;
+	}
+	/* Draw frame so its top-left lands at (x,y) in 320x240 logical coords (2x scaled). */
+	void drawAt(Uint32 numpic, int x, int y, Uint8 scale, SDL_Surface *screen, Uint32 Tint, Uint8 anti)
+	{
+		if (!status || head.num <= numpic)
+		{
+			return;
+		}
+		int dx = x - (int)data[numpic].posx;
+		int dy = y - (int)data[numpic].posy;
+		draw(numpic, dx, dy, scale, screen, Tint, anti);
+	}
+	/* Decode one CGF frame into index+alpha pairs (width*height*2 bytes). Caller frees. */
+	Uint8 *decodeFrame(Uint32 numpic, Uint32 &outW, Uint32 &outH)
+	{
+		outW = 0;
+		outH = 0;
+		if (!status || head.num <= numpic || !data || !pal)
+		{
+			return 0;
+		}
+		Uint32 frame_w = data[numpic].width;
+		Uint32 frame_h = data[numpic].height;
+		if (frame_w == 0 || frame_h == 0)
+		{
+			return 0;
+		}
+		Uint32 sz = data[numpic + 1].offset - data[numpic].offset;
+		Uint8 *buf = new Uint8[sz];
+		Uint8 *image = new Uint8[frame_w * frame_h * 2];
+		fp.seekg(0x1C + head.sizedata + data[numpic].offset, fp.beg);
+		char *p = (char *)buf;
+		fp.read(p, sz * sizeof(Uint8));
+		Uint32 i = 0, j = 0;
+		while (i < frame_w * frame_h)
+		{
+			sz = buf[j] + buf[j + 1] * 256 + buf[j + 2] * 256 * 256 + buf[j + 3] * 256 * 256 * 256;
+			Uint32 k = 4, nmb;
+			while (k < sz)
+			{
+				if (buf[j + k] == 0)
+				{
+					k++;
+					nmb = buf[j + k];
+					k++;
+					if ((nmb == 0) && (sz == 6))
+					{
+						nmb = 1;
+					}
+					while (nmb != 0)
+					{
+						image[i * 2] = 0;
+						image[i * 2 + 1] = 0;
+						++i;
+						--nmb;
+					}
+				}
+				else if (buf[j + k] == 1)
+				{
+					k++;
+					nmb = buf[j + k];
+					k++;
+					while (nmb != 0)
+					{
+						image[i * 2] = buf[j + k];
+						image[i * 2 + 1] = buf[j + k + 1];
+						++i;
+						k = k + 2;
+						--nmb;
+					}
+				}
+				else if (buf[j + k] == 2)
+				{
+					k++;
+					nmb = buf[j + k];
+					k++;
+					while (nmb != 0)
+					{
+						image[i * 2] = buf[j + k];
+						image[i * 2 + 1] = buf[j + k + 1];
+						++i;
+						--nmb;
+					}
+					k = k + 2;
+				}
+				else if (buf[j + k] == 3)
+				{
+					k++;
+					nmb = buf[j + k];
+					k++;
+					while (nmb != 0)
+					{
+						image[i * 2] = buf[j + k];
+						image[i * 2 + 1] = 255;
+						++i;
+						++k;
+						--nmb;
+					}
+				}
+				else if (buf[j + k] == 4)
+				{
+					k++;
+					nmb = buf[j + k];
+					k++;
+					while (nmb != 0)
+					{
+						image[i * 2] = buf[j + k];
+						image[i * 2 + 1] = 255;
+						++i;
+						--nmb;
+					}
+					++k;
+				}
+			}
+			j = j + k;
+			while (i % frame_w != 0)
+			{
+				image[i * 2] = 0;
+				image[i * 2 + 1] = 0;
+				++i;
+			}
+		}
+		delete[] buf;
+		outW = frame_w;
+		outH = frame_h;
+		return image;
+	}
+	void drawWhiteDigit(Uint32 frame, int x, int y, SDL_Surface *screen)
+	{
+		Uint32 frame_w, frame_h;
+		Uint8 *image = decodeFrame(frame, frame_w, frame_h);
+		if (!image || !screen)
+		{
+			delete[] image;
+			return;
+		}
+		for (Uint32 i = 0; i < frame_h; ++i)
+		{
+			for (Uint32 j = 0; j < frame_w; ++j)
+			{
+				Uint32 idx = i * frame_w + j;
+				Uint8 alpha = image[idx * 2 + 1];
+				Uint8 pi = image[idx * 2];
+				if (alpha == 0)
+				{
+					continue;
+				}
+				Uint8 sr = pal[pi * 4 + 2];
+				Uint8 sg = pal[pi * 4 + 1];
+				Uint8 sb = pal[pi * 4];
+				Uint8 lum = (Uint8)((sr + sg + sb) / 3);
+				if (lum == 0)
+				{
+					continue;
+				}
+				Uint32 tmpx = (Uint32)(x + (int)j);
+				Uint32 tmpy = (Uint32)(y + (int)i);
+				if (tmpx * 2 + 1 >= 640 || tmpy * 2 + 1 >= 480)
+				{
+					continue;
+				}
+				set_pixel_2x(screen, tmpx, tmpy, 255, 255, 255, 255);
+			}
+		}
+		delete[] image;
+	}
+	void drawSheetDigit(int digit, int x, int y, SDL_Surface *screen)
+	{
+		Uint32 frame_w, frame_h;
+		Uint8 *image = decodeFrame(0, frame_w, frame_h);
+		if (!image || !screen || head.num == 0)
+		{
+			delete[] image;
+			return;
+		}
+		int cell_w = 32;
+		int cell_h = 33;
+		int sx = 1 + (digit % 5) * (cell_w + 1);
+		int sy = 1 + (digit / 5) * (cell_h + 1);
+		for (int i = 0; i < cell_h; ++i)
+		{
+			for (int j = 0; j < cell_w; ++j)
+			{
+				Uint32 src_x = (Uint32)(sx + j);
+				Uint32 src_y = (Uint32)(sy + i);
+				if (src_x >= frame_w || src_y >= frame_h)
+				{
+					continue;
+				}
+				Uint32 idx = src_y * frame_w + src_x;
+				Uint32 tmpx = (Uint32)(x + j);
+				Uint32 tmpy = (Uint32)(y + i);
+				if (tmpx * 2 + 1 >= 640 || tmpy * 2 + 1 >= 480)
+				{
+					continue;
+				}
+				set_pixel_2x(screen, tmpx, tmpy,
+					pal[image[idx * 2] * 4 + 2],
+					pal[image[idx * 2] * 4 + 1],
+					pal[image[idx * 2] * 4],
+					image[idx * 2 + 1]);
+			}
+		}
+		delete[] image;
+	}
+	void draw(Uint32 numpic, int x, int y, Uint8 scale, SDL_Surface *screen, Uint32 Tint, Uint8 anti)
 	{
 		if (head.num<=numpic)
 		{
@@ -352,11 +564,11 @@ public:
 		{
 			for (Uint32 j = 0; j<data[numpic].width; ++j)
 			{
-				Uint32 tmpx = data[numpic].posx+j+x;
-				Uint32 tmpy = data[numpic].posy+i+y;
+				int tmpx = (int)data[numpic].posx+(int)j+x;
+				int tmpy = (int)data[numpic].posy+(int)i+y;
 				if (scale)
 				{
-					if ((tmpx*2<640)&&(tmpy*2<480))
+					if ((tmpx*2>=0)&&(tmpy*2>=0)&&(tmpx*2<640)&&(tmpy*2<480))
 					{
 						if (!anti)
 						{
@@ -408,7 +620,7 @@ public:
 				}
 				else
 				{
-					if ((tmpx<640)&&(tmpy<480))
+					if ((tmpx>=0)&&(tmpy>=0)&&(tmpx<640)&&(tmpy<480))
 					{
 						if (!anti)
 						{

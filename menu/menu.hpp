@@ -1,6 +1,7 @@
 #include "options.hpp"
 #include "hiscore.hpp"
 #include "../games/laby/start.hpp"
+#include "../games/forest/start.hpp"
 
 void hideFilm(SDL_Surface *screen, SDL_Surface *bkgr, SDL_Window *window,
 				Uint32 tintLeft, Uint32 tintRight, Uint32 tintUp, Uint32 tintDown,
@@ -271,6 +272,8 @@ int playMenu(SDL_Window* window)
 		return 1;
 	}
 	creditFont.setNullPosX();
+	menuFont.setNullPosX();
+	ultraFont.setNullPosX();
 	mainPix.draw(0,0,0,0,0,bkgr,1);
 	hugoLogo.draw(0x0A,0x0D,0,0,0,bkgr,1);
 	SDL_BlitSurface(bkgr,NULL,screen,NULL);
@@ -467,11 +470,18 @@ int playMenu(SDL_Window* window)
 						music.stopAudio();
 						music.clearAudio();
 						Uint32 score = 0;
-						if (numGame == 0)
+						switch (numGame)
 						{
-							if (labyStart(score,gameMode,playerMode,window,screen))
-							{
-							}
+						    case 0:
+    							if (labyStart(score,gameMode,playerMode,window,screen))
+    							{
+    							}
+							break;
+							case 3:
+								if (forestStart(score, gameMode, playerMode, window, screen))
+								{
+								}
+								break;
 						}
 						music.loadAudio();
 						timeMusic = SDL_GetTicks();
