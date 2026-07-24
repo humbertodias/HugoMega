@@ -1,3 +1,4 @@
+/* .cgf — ITE sprite sheet (CGFF); palette usually comes from a separate .pal. */
 class cgfFile
 {
 private:

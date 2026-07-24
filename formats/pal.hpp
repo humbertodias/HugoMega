@@ -1,3 +1,4 @@
+/* .pal — ITE color palette (CPAL768STD / related); 256 RGB entries. */
 class palFile
 {
 private:

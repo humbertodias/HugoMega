@@ -1,3 +1,4 @@
+/* .til — ITE tiled / fullscreen frame sequence (often cutscenes or backgrounds). */
 class tilFile
 {
 private:

@@ -1,3 +1,4 @@
+/* .raw — ITE raw 8-bit image (indexed pixels; palette usually external). */
 class rawFile
 {
 private:

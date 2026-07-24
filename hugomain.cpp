@@ -1,5 +1,6 @@
 #include <iostream>
 #include <fstream>
+#include <vector>
 #include "localfolder.hpp"
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_mixer.h>
@@ -22,6 +23,10 @@ mainopt options;
 #include "formats/font.hpp"
 #include "formats/txt.hpp"
 #include "formats/oos.hpp"
+#include "formats/brs.hpp"
+#include "formats/cbr.hpp"
+#include "formats/pbr.hpp"
+
 
 #include "intro/intro.hpp"
 #include "menu/menu.hpp"

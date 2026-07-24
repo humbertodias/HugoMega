@@ -1,3 +1,4 @@
+/* .oos — ITE lip-sync track (per-tick mouth/frame indices for speech). */
 class oosFile
 {
 private:
