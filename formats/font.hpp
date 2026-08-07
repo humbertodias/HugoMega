@@ -1,3 +1,4 @@
+/* Font helper: .cgf glyph sheet + charmap .txt (not a dedicated ITE extension). */
 class fontText
 {
 private:

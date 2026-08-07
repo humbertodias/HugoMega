@@ -1,3 +1,4 @@
+/* .txt — Plain text string list (menu labels, credits, game names, etc.). */
 class textFile
 {
 private:

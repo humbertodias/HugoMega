@@ -3,3 +3,7 @@
 hugomain
 cmake-build-debug
 build
+# OSX
+.DS_Store
+
+data/

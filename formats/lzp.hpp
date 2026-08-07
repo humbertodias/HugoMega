@@ -1,3 +1,4 @@
+/* .lzp — ITE LZ-compressed image/animation blob (frames + timing). */
 class lzpFile
 {
 private:

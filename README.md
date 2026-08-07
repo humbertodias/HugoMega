@@ -1,6 +1,7 @@
 # HugoMega
 
-TODO
+<img width="393" height="500" alt="image" src="https://github.com/user-attachments/assets/02d56570-8e47-437d-9356-acdfb288a254" />
+
 
 ## Build Instructions
 
@@ -18,6 +19,8 @@ After building, you can execute HugoMega with:
 ```shell
 ./build/hugomain
 ```
+Don't forget to add the hugo gold [data](https://sites.google.com/view/ajugarconhugopc/juegos/ediciondorada) folder at the same `hugomain` level 
+
 
 ## Requirements
 
@@ -29,6 +32,6 @@ After building, you can execute HugoMega with:
 
 Feel free to open issues or submit pull requests to improve HugoMega!
 
-## License
-
-TODO
+## Credits
+- [Forest](games/forest) by [gzalo](https://github.com/gzalo/hugo-re)
+- [Labyrinth](games/laby) by [supinrus](https://github.com/supinrus/HugoMega)

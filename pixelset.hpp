@@ -1,4 +1,4 @@
-void set_pixel(SDL_Surface *surface, Uint32 x, Uint32 y, Uint8 r, Uint8 g, Uint8 b, Uint8 a)
+inline void set_pixel(SDL_Surface *surface, Uint32 x, Uint32 y, Uint8 r, Uint8 g, Uint8 b, Uint8 a)
 {
   Uint32 * const target_pixel = (Uint32 *) ((Uint8 *) surface->pixels
                                              + y * surface->pitch
@@ -12,6 +12,17 @@ void set_pixel(SDL_Surface *surface, Uint32 x, Uint32 y, Uint8 r, Uint8 g, Uint8
   tmp = a*255+a_old*(255-a);
   a_old = tmp/255;
   *target_pixel = rgb_old+a_old*256*256*256;
+}
+
+/* Draw one logical pixel as a 2x2 block (320x240 → 640x480). */
+inline void set_pixel_2x(SDL_Surface *surface, Uint32 x, Uint32 y, Uint8 r, Uint8 g, Uint8 b, Uint8 a)
+{
+  if (!surface || x * 2 + 1 >= 640 || y * 2 + 1 >= 480)
+    return;
+  set_pixel(surface, x * 2, y * 2, r, g, b, a);
+  set_pixel(surface, x * 2 + 1, y * 2, r, g, b, a);
+  set_pixel(surface, x * 2, y * 2 + 1, r, g, b, a);
+  set_pixel(surface, x * 2 + 1, y * 2 + 1, r, g, b, a);
 }
 
 /*void DownColorSurface(SDL_Surface *surf, Uint32 down, Uint32 w, Uint32 h)

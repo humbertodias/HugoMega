@@ -1,3 +1,4 @@
+/* .wav — PCM wave audio (SDL playback helper used by menu/games speech/SFX). */
 class wavFile
 {
 private:
